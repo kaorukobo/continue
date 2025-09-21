@@ -3,6 +3,7 @@ package com.github.continuedev.continueintellijextension.browser
 import com.github.continuedev.continueintellijextension.constants.MessageTypes
 import com.github.continuedev.continueintellijextension.services.ContinuePluginService
 import com.github.continuedev.continueintellijextension.utils.uuid
+import com.github.continuedev.continueintellijextension.utils.JsExecutionLogger
 import com.google.gson.Gson
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.service
@@ -82,6 +83,9 @@ class ContinueBrowser(private val project: Project): Disposable {
     }
 
     fun sendToWebview(messageType: String, data: Any? = null, messageId: String = uuid()) {
+        // メソッド呼び出しをログに記録
+        JsExecutionLogger.logMethodCall("sendToWebview", messageType, data, messageId)
+
         val json = Gson().toJson(BrowserMessage(messageType, messageId, data))
         val jsCode = """window.postMessage($json, "*");"""
         try {
@@ -92,16 +96,20 @@ class ContinueBrowser(private val project: Project): Disposable {
     }
 
     private fun executeJavaScript(myJSQueryOpenInBrowser: JBCefJSQuery) {
+        // メソッド呼び出しをログに記録
         val script = """
             window.postIntellijMessage = function(messageType, data, messageId) {
                 const msg = JSON.stringify({messageType, data, messageId});
                 ${myJSQueryOpenInBrowser.inject("msg")}
             }
             """
+        JsExecutionLogger.logMethodCall("executeJavaScript", script)
         browser.cefBrowser.executeJavaScript(script, getGuiUrl(), 0)
     }
 
     override fun dispose() {
+        // ログシステムのクリーンアップ
+        JsExecutionLogger.shutdown()
         Disposer.dispose(myJSQueryOpenInBrowser)
         Disposer.dispose(browser)
     }
